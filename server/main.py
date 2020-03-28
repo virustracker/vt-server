@@ -49,7 +49,7 @@ def store_result(tokens, result, report_type):
         new_row['location_lat' ] = None
         new_row['location_long'] = None
     
-      db_execute(conn, stmt, **new_row)
+      db_execute(conn, stmt, new_row)
 
 def process_report(report):
   if not isinstance(report, dict) or not all(field in report for field in ('tokens', 'type', 'result')):
@@ -66,7 +66,7 @@ def process_report(report):
       raise BadInputException("Could not parse token preimage.")
     if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
         raise BadInputException("Could not parse token location.")
-  if not isinstance(type, str) or type not in ('SELF_REPORT', 'VERIFIED'):
+  if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
     raise BadInputException("Could not parse token type.")
   if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
     raise BadInputException("Could not parse token result.")
