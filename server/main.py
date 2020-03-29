@@ -86,8 +86,8 @@ def tokens(request):
         raise BadInputException("Request must contain JSON, and must have a report.")
       report = request_json['report']
       process_report(report)
-    except (BadInputException, BinasciiError) as err:
-      return ('Bad Request: '+err, 400)
+    except (BadInputException, BinasciiError, ValueError) as err:
+      return ('Bad Request: ' + str(err), 400)
     
     return 'Success!'
   else:
