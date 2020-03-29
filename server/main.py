@@ -129,14 +129,17 @@ def process_report(report):
     if not isinstance(tokens, list):
         raise BadInputException("Tokens must be a list.")
 
-    for token in tokens:
+    for i, token in enumerate(tokens):
         if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
             raise BadInputException("POSTed tokens must have a preimage.")
 
         try:
-            b64decode(token['preimage'], validate=True)
+            preimage = b64decode(token['preimage'], validate=True)
         except Exception as e:
             raise BadInputException("Could not parse token preimage.")
+
+        if len(preimage) != 32:
+            raise BadInputException(f"Preimage {i} is not 32 bytes long")
 
         if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
             raise BadInputException("Could not parse token location.")
