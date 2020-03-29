@@ -43,7 +43,7 @@ def store_result(tokens, result, report_type):
     for token in tokens:
       new_row = {}
       new_row['token_value'] = virustracker_hash(b64decode(token['preimage'])).digest()
-      new_row['report_type'] = type
+      new_row['report_type'] = report_type
       new_row['report_result'] = result
       if 'lat' in token and 'long' in token:
         new_row['location_lat' ] = token['lat' ]
