@@ -18,8 +18,9 @@ TOKEN_BYTES = 16
 class BadInputException(Exception):
     pass
 
+PRODUCTION = os.environ.get('CLOUD_SQL_CONNECTION_NAME', None) is not None
 
-if os.environ.get('CLOUD_SQL_CONNECTION_NAME', None) is not None:
+if PRODUCTION:
     # We are running in productin, build the production DSN
     conn_name = os.environ.get('CLOUD_SQL_CONNECTION_NAME')
     sock_path = f'/cloudsql/{conn_name}/.s.PGSQL.5432'
@@ -62,8 +63,9 @@ class Token(Base):
         )
 
 
-# Initialize the DB schema from the above description
-Base.metadata.create_all(engine)
+# Initialize the DB schema from the above description, disabled in prod
+if not PRODUCTION:
+    Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 
