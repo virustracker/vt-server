@@ -1,14 +1,16 @@
+from base64 import b64encode, b64decode
+from binascii import Error as BinasciiError
+from contextlib import contextmanager
+from flask import jsonify
+from sqlalchemy import Column, Integer, Float, LargeBinary
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import hashlib
 import math
 import os
 import sqlalchemy
-from flask import jsonify
-from base64 import b64encode, b64decode
-from binascii import Error as BinasciiError
-import hashlib
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, LargeBinary
-from sqlalchemy.orm import sessionmaker
-from contextlib import contextmanager
+import json
+
 
 TOKEN_BYTES = 16
 
