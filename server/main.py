@@ -129,8 +129,12 @@ def process_report(report):
 def tokens(request):
     if request.method == 'GET':
         with session_scope() as session:
-            toks = [{'value': b64encode(t.value), 'type': t.type} for t in session.query(Token).all()]
-            return jsonify({'tokens': toks})
+            toks = [{
+              'value': b64encode(t.value).decode('ASCII'),
+              'type': t.type
+            } for t in session.query(Token).all()]
+
+            return json.dumps({'tokens': toks})
     elif request.method == 'POST':
         # Validate input
         try:
