@@ -75,13 +75,13 @@ def session_scope():
 
 
 def virustracker_hash(preimage):
-    return hashlib.sha256(b"VIRUSTRACKER"+preimage)
+    return hashlib.sha256(b"VIRUSTRACKER"+preimage).digest()
 
 
 def store_result(tokens, result, report_type):
     with session_scope() as session:
         for t in tokens:
-            h = virustracker_hash(b64decode(t['preimage'])).digest()
+            h = virustracker_hash(b64decode(t['preimage']))
             if 'lat' in t and 'long' in t:
                 lat, lon = t['lat'], t['long']
             else:
