@@ -69,3 +69,29 @@ def test_token_add():
     assert('tokens' in result)
     assert(len(result['tokens']) == num_tokens)
     assert(set([t['value'] for t in result['tokens']]) == hashes)
+
+
+def test_token_update():
+    preimage = b'A'*32
+    report = {
+        'tokens': [{'preimage': b64encode(preimage).decode('ASCII')}],
+        'type': 'SELF_REPORT',
+        'result': 'NEGATIVE',
+    }
+    process_report(report)
+    with session_scope() as session:
+        t = session.query(Token).first()
+        print(t.__dict__)
+        assert(t.type == main.types['SELF_REPORT'])
+        assert(t.result == main.results['NEGATIVE'])
+
+    # Now update and see if it worked
+    report['type'] = 'VERIFIED'
+    report['result'] = 'POSITIVE'
+    process_report(report)
+
+    with session_scope() as session:
+        t = session.query(Token).first()
+        print(t.__dict__)
+        assert(t.type == main.types['VERIFIED'])
+        assert(t.result == main.results['POSITIVE'])

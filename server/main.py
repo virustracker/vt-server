@@ -99,13 +99,23 @@ def store_result(tokens, result, report_type):
             else:
                 lat, lon = None, None
 
-            session.add(Token(
-                value=h,
-                type=report_type,
-                result=result,
-                location_lat=lat,
-                location_lon=lon
-            ))
+            # Try selecting for an existing entry before we insert
+            t = session.query(Token).filter(Token.value == h).first()
+            if t is not None:
+                print("UPDATEING")
+                t.type = report_type
+                t.result = result
+                t.location_lat = lat
+                t.location_lon = lon
+            else:
+                print("INSERTING")
+                session.add(Token(
+                    value=h,
+                    type=report_type,
+                    result=result,
+                    location_lat=lat,
+                    location_lon=lon
+                ))
         session.commit()
 
 
