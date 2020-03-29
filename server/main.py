@@ -49,7 +49,7 @@ Base = declarative_base()
 
 class Token(Base):
     __tablename__ = "token"
-    value = Column("token_value", LargeBinary, primary_key=True)
+    token_value = Column(LargeBinary, primary_key=True)
     type = Column("report_type", Integer)
     result = Column("report_result", Integer)
     location_lat = Column("location_lat", Float)
