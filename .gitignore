@@ -3,3 +3,4 @@ __pycache__
 .envrc
 .direnv
 .mypy_cache
+htmlcov

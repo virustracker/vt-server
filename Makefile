@@ -18,4 +18,4 @@ tests: unittest
 unittest:
 	@echo "Running standard unit tests.."
 	python3 -m unittest discover -s tests -v -p "*_tests.py" || (echo "Error in standard unit tests."; exit 1)
-	PYTHONPATH=. pytest -vvv
+	PYTHONPATH=. pytest -vvv --cov=server
