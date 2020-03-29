@@ -23,7 +23,7 @@ db = sqlalchemy.create_engine(
 )
 
 def db_connect():
-  db.connect()
+  return db.connect()
 
 def virustracker_hash(preimage):
   return hashlib.sha256(b"VIRUSTRACKER"+preimage)
