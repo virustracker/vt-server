@@ -111,7 +111,9 @@ def process_report(report):
         if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
             raise BadInputException("POSTed tokens must have a preimage.")
 
-        if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
+        try:
+            preimage = b64decode(token['preimage'], validate=True)
+        except Exception as e:
             raise BadInputException("Could not parse token preimage.")
 
         if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
