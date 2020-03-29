@@ -135,7 +135,7 @@ def process_report(report):
 
         preimage = b64decode(token['preimage'], validate=True)
 
-        if len(preimage) != 32:
+        if len(preimage) not in  [16, 32]:
             raise BadInputException(f"Preimage {i} is not 32 bytes long")
 
         if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):

@@ -5,7 +5,7 @@ import json
 import sqlalchemy
 import pytest
 from sqlalchemy.orm import sessionmaker
-
+import hashlib
 from server import main
 
 
@@ -95,3 +95,37 @@ def test_token_update():
         print(t.__dict__)
         assert(t.type == main.types['VERIFIED'])
         assert(t.result == main.results['POSITIVE'])
+
+
+def test_process_report():
+    token = json.loads("""{
+     	 "type": "VERIFIED",
+     	 "result": "POSITIVE",
+     	 "tokens": [{
+     			 "preimage": "0000000000000000000000==",
+     			 "lat": 47.3588359,
+     			 "long": 8.5433576
+     		 }
+     	 ]
+    }""")
+    main.process_report(token)
+    preimage = "0000000000000000000000=="
+    token_value = hashlib.sha256(b"VIRUSTRACKER"+b64decode(preimage)).digest()
+    with session_scope() as session:
+        t = session.query(Token).first()
+        assert(token_value == t.value)
+
+
+def test_process_report_preimage_formaterror():
+    token = json.loads("""{
+     	 "type": "VERIFIED",
+     	 "result": "POSITIVE",
+     	 "tokens": [{
+     			 "preimage": "000000000000000000==",
+     			 "lat": 47.3588359,
+     			 "long": 8.5433576
+     		 }
+     	 ]
+      }""")
+    with pytest.raises(Exception):
+        main.process_report(token)

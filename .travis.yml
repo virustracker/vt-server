@@ -9,4 +9,4 @@ install:
   - pip install -r server/requirements.txt -r requirements-dev.txt
 # command to run tests
 script:
-  - pytest -vvv
+  - make tests
