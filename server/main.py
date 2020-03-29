@@ -60,6 +60,18 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
 
+types = {
+  'SELF_REPORT': 0,
+  'VERIFIED': 1,
+}
+
+results = {
+  'UNKNOWN': 0,
+  'POSITIVE': 1,
+  'NEGATIVE': 2,
+}
+
+
 @contextmanager
 def session_scope():
     """Provide a transactional scope around a series of operations."""
@@ -112,20 +124,20 @@ def process_report(report):
             raise BadInputException("POSTed tokens must have a preimage.")
 
         try:
-            preimage = b64decode(token['preimage'], validate=True)
+            b64decode(token['preimage'], validate=True)
         except Exception as e:
             raise BadInputException("Could not parse token preimage.")
 
         if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
             raise BadInputException("Could not parse token location.")
 
-        if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
+        if not isinstance(report_type, str) or report_type not in types.keys():
             raise BadInputException("Could not parse token type.")
 
-        if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
+        if not isinstance(result, str) or result not in results.keys():
             raise BadInputException("Could not parse token result.")
 
-    store_result(tokens, result, report_type)
+    store_result(tokens, results[result], types[report_type])
 
 
 def tokens(request):
