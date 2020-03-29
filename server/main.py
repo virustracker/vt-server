@@ -154,9 +154,9 @@ def tokens(request):
     if request.method == 'GET':
         with session_scope() as session:
             toks = [{
-              'value': b64encode(t.value).decode('ASCII'),
+              'value': b64encode(t.value[:TOKEN_BYTES]).decode('ASCII'),
               'type': t.type
-            } for t in session.query(Token).all()]
+            } for t in session.query(Token).filter(Token.result == results['POSITIVE']).all()]
 
             return json.dumps({'tokens': toks})
     elif request.method == 'POST':

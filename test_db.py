@@ -1,4 +1,4 @@
-from server.main import Token, session_scope, tokens, virustracker_hash, process_report, engine, Base
+from server.main import Token, session_scope, tokens, virustracker_hash, process_report, engine, Base, TOKEN_BYTES
 from base64 import b64encode, b64decode
 from collections import namedtuple
 import json
@@ -53,7 +53,7 @@ def test_token_add():
     preimages = [bytes([i])*32 for i in range(0, num_tokens)]
     assert(len(preimages) == num_tokens)
 
-    hashes = set([b64encode(virustracker_hash(p)).decode('ASCII') for p in preimages])
+    hashes = set([b64encode(virustracker_hash(p)[:TOKEN_BYTES]).decode('ASCII') for p in preimages])
     assert(len(hashes) == num_tokens)
 
     report = {
