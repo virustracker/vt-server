@@ -27,7 +27,14 @@ if os.environ.get('CLOUD_SQL_CONNECTION_NAME', None) is not None:
     password = os.environ.get('DB_PASS')
     dbname = os.environ.get('DB_NAME')
     driver = 'postgres+pg8000'
-    DATABASE_URL = f'{driver}://{username}:{password}@/{dbname}?host={sock_path}'
+
+    DATABASE_URL = sqlalchemy.engine.url.URL(
+        drivername='postgres+pg8000',
+        username=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASS'),
+        database=os.environ.get('DB_NAME'),
+        query={'unix_sock': '/cloudsql/{}/.s.PGSQL.5432'.format(os.environ.get('CLOUD_SQL_CONNECTION_NAME'))}
+    )
 else:
     # We are running locally
     DATABASE_URL = 'sqlite://'
