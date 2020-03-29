@@ -5,94 +5,140 @@ from flask import jsonify
 from base64 import b64encode, b64decode
 from binascii import Error as BinasciiError
 import hashlib
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, Float, LargeBinary
+from sqlalchemy.orm import sessionmaker
+from contextlib import contextmanager
 
 TOKEN_BYTES = 16
 
+
 class BadInputException(Exception):
-  pass
+    pass
 
-db = sqlalchemy.create_engine(
-    sqlalchemy.engine.url.URL(
-      drivername='postgres+pg8000',
-      username=os.environ.get('DB_USER'),
-      password=os.environ.get('DB_PASS'),
-      database=os.environ.get('DB_NAME'),
-      query={'unix_sock': '/cloudsql/{}/.s.PGSQL.5432'.format(os.environ.get('CLOUD_SQL_CONNECTION_NAME'))}
-    ),
-    pool_size=1,
-)
 
-def db_connect():
-  return db.connect()
+if os.environ.get('CLOUD_SQL_CONNECTION_NAME', None) is not None:
+    # We are running in productin, build the production DSN
+    conn_name = os.environ.get('CLOUD_SQL_CONNECTION_NAME')
+    sock_path = f'/cloudsql/{conn_name}/.s.PGSQL.5432'
+    username = os.environ.get('DB_USER')
+    password = os.environ.get('DB_PASS')
+    dbname = os.environ.get('DB_NAME')
+    driver = 'postgres+pg8000'
+    DATABASE_URL = f'{driver}://{username}:{password}@/{dbname}?host={sock_path}'
+else:
+    # We are running locally
+    DATABASE_URL = 'sqlite://'
+
+
+engine = sqlalchemy.create_engine(DATABASE_URL)
+
+
+Base = declarative_base()
+
+
+class Token(Base):
+    __tablename__ = "token"
+    value = Column(LargeBinary, primary_key=True)
+    type = Column(Integer)
+    result = Column(Integer)
+    location_lat = Column(Float)
+    location_lon = Column(Float)
+
+    def __eq__(self, other):
+        return (
+          self.value == other.value and
+          self.type == other.value and
+          self.result == other.result
+        )
+
+
+# Initialize the DB schema from the above description
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+
+
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = Session()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
 
 def virustracker_hash(preimage):
-  return hashlib.sha256(b"VIRUSTRACKER"+preimage)
+    return hashlib.sha256(b"VIRUSTRACKER"+preimage)
 
-def db_execute(conn, stmt, values):
-  conn.execute(stmt, **values)
 
 def store_result(tokens, result, report_type):
-  # Commit input to database
-  stmt = sqlalchemy.text(
-    'INSERT INTO token (token_value, report_type, report_result, location_lat, location_long) '
-    'VALUES (:token_value, :report_type, :report_result, :location_lat, :location_long) '
-    'ON CONFLICT (token_value) DO UPDATE '
-    'SET report_type = :report_type, report_result = :report_result, location_lat = :location_lat, '
-    'location_long = :location_long')
-  with db_connect() as conn:
-    for token in tokens:
-      new_row = {}
-      new_row['token_value'] = virustracker_hash(b64decode(token['preimage'])).digest()
-      new_row['report_type'] = report_type
-      new_row['report_result'] = result
-      if 'lat' in token and 'long' in token:
-        new_row['location_lat' ] = token['lat' ]
-        new_row['location_long'] = token['long']
-      else:
-        new_row['location_lat' ] = None
-        new_row['location_long'] = None
-    
-      db_execute(conn, stmt, new_row)
+    with session_scope() as session:
+        for t in tokens:
+            h = virustracker_hash(b64decode(t['preimage'])).digest()
+            if 'lat' in t and 'long' in t:
+                lat, lon = t['lat'], t['long']
+            else:
+                lat, lon = None, None
+
+            session.add(Token(
+                value=h,
+                type=report_type,
+                result=result,
+                location_lat=lat,
+                location_lon=lon
+            ))
+        session.commit()
+
 
 def process_report(report):
-  if not isinstance(report, dict) or not all(field in report for field in ('tokens', 'type', 'result')):
-    raise BadInputException("Report must be a dict, and must contain 'tokens', 'type', and 'result'.")
-  tokens = report['tokens']
-  report_type = report['type']
-  result = report['result']
-  if not isinstance(tokens, list):
-    raise BadInputException("Tokens must be a list.")
-  for token in tokens:
-    if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
-      raise BadInputException("POSTed tokens must have a preimage.")
-    if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
-      raise BadInputException("Could not parse token preimage.")
-    if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
-        raise BadInputException("Could not parse token location.")
-  if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
-    raise BadInputException("Could not parse token type.")
-  if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
-    raise BadInputException("Could not parse token result.")
+    if not isinstance(report, dict) or not all(field in report for field in ('tokens', 'type', 'result')):
+        raise BadInputException("Report must be a dict, and must contain 'tokens', 'type', and 'result'.")
+    tokens = report['tokens']
+    report_type = report['type']
+    result = report['result']
 
-  store_result(tokens, result, report_type)
+    if not isinstance(tokens, list):
+        raise BadInputException("Tokens must be a list.")
+
+    for token in tokens:
+        if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
+            raise BadInputException("POSTed tokens must have a preimage.")
+
+        if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
+            raise BadInputException("Could not parse token preimage.")
+
+        if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
+            raise BadInputException("Could not parse token location.")
+
+        if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
+            raise BadInputException("Could not parse token type.")
+
+        if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
+            raise BadInputException("Could not parse token result.")
+
+    store_result(tokens, result, report_type)
+
 
 def tokens(request):
-  if request.method == 'GET':
-    with db_connect() as conn:
-      all_tokens = conn.execute("SELECT token_value, report_type FROM token WHERE report_result = 'POSITIVE'").fetchall()
-      return jsonify({'tokens': [{'value': b64encode(row[0]).decode('ascii'), 'type': row[1]} for row in all_tokens]})
-  elif request.method == 'POST':
-    # Validate input
-    try:
-      request_json = request.get_json()
-      if not request_json or not isinstance(request_json, dict) or 'report' not in request_json:
-        raise BadInputException("Request must contain JSON, and must have a report.")
-      report = request_json['report']
-      process_report(report)
-    except (BadInputException, BinasciiError, ValueError) as err:
-      return ('Bad Request: ' + str(err), 400)
-    
-    return 'Success!'
-  else:
-    return ('Method Not Allowed', 405)
-
+    if request.method == 'GET':
+        with session_scope() as session:
+            toks = [{'value': b64encode(t.value), 'type': t.type} for t in session.query(Token).all()]
+            return jsonify({'tokens': toks})
+    elif request.method == 'POST':
+        # Validate input
+        try:
+            request_json = request.get_json()
+            if not request_json or not isinstance(request_json, dict) or 'report' not in request_json:
+                raise BadInputException("Request must contain JSON, and must have a report.")
+            report = request_json['report']
+            process_report(report)
+        except (BadInputException, BinasciiError, ValueError) as err:
+            return ('Bad Request: ' + str(err), 400)
+        return 'Success!'
+    else:
+        return ('Method Not Allowed', 405)
