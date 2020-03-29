@@ -11,16 +11,19 @@ TOKEN_BYTES = 16
 class BadInputException(Exception):
   pass
 
-def db_connect():
-  return sqlalchemy.create_engine(
+db = sqlalchemy.create_engine(
     sqlalchemy.engine.url.URL(
       drivername='postgres+pg8000',
       username=os.environ.get('DB_USER'),
       password=os.environ.get('DB_PASS'),
       database=os.environ.get('DB_NAME'),
       query={'unix_sock': '/cloudsql/{}/.s.PGSQL.5432'.format(os.environ.get('CLOUD_SQL_CONNECTION_NAME'))}
-    )
-  ).connect()
+    ),
+    pool_size=1,
+)
+
+def db_connect():
+  db.connect()
 
 def virustracker_hash(preimage):
   return hashlib.sha256(b"VIRUSTRACKER"+preimage)
