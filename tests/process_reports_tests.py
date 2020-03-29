@@ -11,7 +11,7 @@ DB=[]
 def mock_execute(conn, stmt, values):
   DB.append(values) 
 
-class TestTokens(unittest.TestCase):
+class TestProcessReports(unittest.TestCase):
 
   @mock.patch('server.main.db_execute', side_effect=mock_execute)
   @mock.patch('server.main.db_connect')
