@@ -133,10 +133,7 @@ def process_report(report):
         if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
             raise BadInputException("POSTed tokens must have a preimage.")
 
-        try:
-            preimage = b64decode(token['preimage'], validate=True)
-        except Exception as e:
-            raise BadInputException("Could not parse token preimage.")
+        preimage = b64decode(token['preimage'], validate=True)
 
         if len(preimage) != 32:
             raise BadInputException(f"Preimage {i} is not 32 bytes long")
