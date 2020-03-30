@@ -39,7 +39,7 @@ def db_execute(conn, stmt, values):
 # Add to or update token table
 def store_tokens(token_values, report_result, report_type):
   # Disallow overwriting verified results with self-reported results.
-  update_condition = ' WHERE report_type <> "VERIFIED"' if report_type != 'VERIFIED' else ''
+  update_condition = ' WHERE token.report_type <> "VERIFIED"' if report_type != 'VERIFIED' else ''
   
   stmt = sqlalchemy.text(
     'INSERT INTO token (token_value, report_type, report_result) '
