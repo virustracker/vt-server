@@ -1,6 +1,6 @@
 def token(request):
-  import virustracker.token
-  return token.endpoint(request)
+  from virustracker.token import endpoint
+  return endpoint(request)
 def lab_certificate(request):
-  import virustracker.lab_certificate
-  return lab_certificate.endpoint(request)
+  from virustracker.lab_certificate import endpoint
+  return endpoint(request)
