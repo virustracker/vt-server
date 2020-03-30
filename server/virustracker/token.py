@@ -15,6 +15,12 @@ TOKEN_VALUE_BYTES = 32
 def compute_token_value(preimage):
   return hashlib.sha256(b"VIRUSTRACKER" + preimage).digest()
 
+def verify_ahp(preimages, ahp):
+  m = hashlib.sha256()
+  for pi in preimages:
+    m.update(pi)
+  return hmac.compare_digest(ahp, m.digest()[:len(ahp)])
+
 # Add to or update token table
 def store_tokens(token_values, report_result, report_type):
   # Disallow overwriting verified results with self-reported results.
@@ -89,12 +95,6 @@ def process_report(report):
   assert report_result
   
   store_tokens((compute_token_value(pi) for pi in preimages), report_result, report_type)
-
-def verify_ahp(preimages, ahp):
-  m = hashlib.sha256()
-  for pi in preimages:
-    m.update(pi)
-  return hmac.compare_digest(ahp, m.digest()[:len(ahp)])
 
 def endpoint(request):
   if request.path != '/':
