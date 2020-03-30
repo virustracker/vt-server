@@ -34,24 +34,17 @@ def db_execute(conn, stmt, values):
 def store_result(tokens, result, report_type):
   # Commit input to database
   stmt = sqlalchemy.text(
-    'INSERT INTO token (token_value, report_type, report_result, location_lat, location_long) '
-    'VALUES (:token_value, :report_type, :report_result, :location_lat, :location_long) '
+    'INSERT INTO token (token_value, report_type, report_result) '
+    'VALUES (:token_value, :report_type, :report_result) '
     'ON CONFLICT (token_value) DO UPDATE '
-    'SET report_type = :report_type, report_result = :report_result, location_lat = :location_lat, '
-    'location_long = :location_long')
+    'SET report_type = :report_type, report_result = :report_result')
   with db_connect() as conn:
     for token in tokens:
       new_row = {}
       new_row['token_value'] = virustracker_hash(b64decode(token['preimage'])).digest()
       new_row['report_type'] = report_type
       new_row['report_result'] = result
-      if 'lat' in token and 'long' in token:
-        new_row['location_lat' ] = token['lat' ]
-        new_row['location_long'] = token['long']
-      else:
-        new_row['location_lat' ] = None
-        new_row['location_long'] = None
-    
+      
       db_execute(conn, stmt, new_row)
 
 def process_report(report):
@@ -71,8 +64,6 @@ def process_report(report):
         raise BadInputException("Could not parse token preimage.")
     except (BinasciiError, ValueError) as err:
       raise BadInputException("Invalid Base64.")
-    if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
-        raise BadInputException("Could not parse token location.")
   if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
     raise BadInputException("Could not parse token type.")
   if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
