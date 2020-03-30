@@ -104,7 +104,7 @@ def process_report(report):
       report_result = rows[0][0]
   assert report_result
   
-  store_tokens(compute_token_value(pi) for pi in preimages, report_result, report_type)
+  store_tokens((compute_token_value(pi) for pi in preimages), report_result, report_type)
 
 def verify_ahp(preimages, ahp):
   m = hashlib.sha256()
