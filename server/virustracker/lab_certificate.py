@@ -1,5 +1,5 @@
-import common
-from common import db_connect, db_execute
+from . import common
+from .common import db_connect, db_execute
 
 import hashlib
 import hmac
