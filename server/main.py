@@ -32,20 +32,25 @@ def db_connect():
 def db_execute(conn, stmt, values):
   conn.execute(stmt, **values)
 
-def store_result(tokens, result, report_type):
-  # Commit input to database
+# Add to or update token table
+def store_tokens(tokens, report_result, report_type):
+  # Disallow overwriting verified results with self-reported results.
+  update_condition = ' WHERE report_type <> "VERIFIED"' if report_type != 'VERIFIED' else ''
+  
   stmt = sqlalchemy.text(
     'INSERT INTO token (token_value, report_type, report_result) '
     'VALUES (:token_value, :report_type, :report_result) '
     'ON CONFLICT (token_value) DO UPDATE '
-    'SET report_type = :report_type, report_result = :report_result')
+    'SET report_type = :report_type, report_result = :report_result'
+    + update_condition
+  )
+  
   with db_connect() as conn:
     for token in tokens:
       new_row = {}
       new_row['token_value'] = compute_token_value(b64decode(token['preimage']))
       new_row['report_type'] = report_type
-      new_row['report_result'] = result
-      
+      new_row['report_result'] = report_result
       db_execute(conn, stmt, new_row)
 
 def process_report(report):
@@ -54,7 +59,7 @@ def process_report(report):
     raise BadInputException("Report must be a dict, and must contain 'tokens', 'type', and 'result'.")
   tokens = report['tokens']
   report_type = report['type']
-  result = report['result']
+  report_result = report['result']
   if not isinstance(tokens, list):
     raise BadInputException("Tokens must be a list.")
   for token in tokens:
@@ -67,10 +72,10 @@ def process_report(report):
       raise BadInputException("Invalid Base64.")
   if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
     raise BadInputException("Could not parse token type.")
-  if not isinstance(result, str) or result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
+  if not isinstance(report_result, str) or report_result not in ('UNKNOWN', 'POSITIVE', 'NEGATIVE'):
     raise BadInputException("Could not parse token result.")
-
-  store_result(tokens, result, report_type)
+  
+  store_tokens(tokens, report_result, report_type)
 
 def tokens(request):
   if request.method == 'GET':
