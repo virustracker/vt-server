@@ -96,7 +96,7 @@ def verify_ahp(preimages, ahp):
     m.update(pi)
   return hmac.compare_digest(ahp, m.digest()[:len(ahp)])
 
-def token_endpoint(request):
+def endpoint(request):
   if request.path != '/':
     return ('Invalid Path', 404)
   if request.method == 'GET':

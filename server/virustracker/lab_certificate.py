@@ -37,7 +37,7 @@ def process_attestation(attestation, ahp, result, lab_id):
     )
     db_execute(conn, stmt, {'ahp': ahp, 'result': result, 'lab_id': lab_id})
 
-def lab_certificate_endpoint(request):
+def endpoint(request):
   try:
     ahp = b64decode(request.path[1:], '-_', validate=True)
   except (BinasciiError, ValueError) as err:

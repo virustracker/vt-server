@@ -1,2 +1,0 @@
-from server.token import token_endpoint
-from server.lab_certificate import lab_certificate_endpoint
