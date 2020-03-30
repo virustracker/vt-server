@@ -1,40 +1,19 @@
+import server.common
+from server.common import db_connect, db_execute
+
+import hashlib
+import hmac
 import math
-import os
 import sqlalchemy
 from flask import jsonify
 from base64 import b64encode, b64decode
 from binascii import Error as BinasciiError
-import hashlib
-import hmac
 
 PREIMAGE_BYTES = 32
 TOKEN_VALUE_BYTES = 32
 
 def compute_token_value(preimage):
   return hashlib.sha256(b"VIRUSTRACKER" + preimage).digest()
-
-class BadInputException(Exception):
-  pass
-
-class ForbiddenException(Exception):
-  pass
-
-db = sqlalchemy.create_engine(
-    sqlalchemy.engine.url.URL(
-      drivername='postgres+pg8000',
-      username=os.environ.get('DB_USER'),
-      password=os.environ.get('DB_PASS'),
-      database=os.environ.get('DB_NAME'),
-      query={'unix_sock': '/cloudsql/{}/.s.PGSQL.5432'.format(os.environ.get('CLOUD_SQL_CONNECTION_NAME'))}
-    ),
-    pool_size=1,
-)
-
-def db_connect():
-  return db.connect()
-
-def db_execute(conn, stmt, values):
-  conn.execute(stmt, **values)
 
 # Add to or update token table
 def store_tokens(token_values, report_result, report_type):
@@ -56,6 +35,11 @@ def store_tokens(token_values, report_result, report_type):
     for token_value in token_values:
       new_row['token_value'] = token_value
       db_execute(conn, stmt, new_row)
+
+class BadInputException(Exception):
+  pass
+class VerificationFailedException(Exception):
+  pass
 
 def process_report(report):
   # Validate input
@@ -91,16 +75,16 @@ def process_report(report):
       ahp = b64decode(report['attestation_hash_prefix'], validate=True)
     except (BinasciiError, ValueError) as err:
       raise BadInputException("Invalid Base64.")
-    if len(ahp) < 8:
-      raise BadInputException("attestation_hash_prefix too short.")
+    if not common.AHP_MIN_BYTES <= len(ahp) <= common.AHP_MAX_BYTES:
+      raise BadInputException("bad attestation_hash_prefix length.")
     
     # Verify attestation_hash_prefix is correct and has an attestation
     if not verify_ahp(preimages, ahp):
-      raise ForbiddenException()
+      raise VerificationFailedException()
     with db_connect() as conn:
-      rows = conn.execute(sqlalchemy.text("SELECT result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
+      rows = db_execute(conn, sqlalchemy.text("SELECT result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
       if not rows:
-        raise ForbiddenException()
+        raise VerificationFailedException()
       report_result = rows[0][0]
   assert report_result
   
@@ -112,12 +96,12 @@ def verify_ahp(preimages, ahp):
     m.update(pi)
   return hmac.compare_digest(ahp, m.digest()[:len(ahp)])
 
-def tokens(request):
+def token_endpoint(request):
   if request.path != '/':
     return ('Invalid Path', 404)
   if request.method == 'GET':
     with db_connect() as conn:
-      all_tokens = conn.execute("SELECT token_value, report_type FROM token WHERE report_result = 'POSITIVE'").fetchall()
+      all_tokens = db_execute(conn, "SELECT token_value, report_type FROM token WHERE report_result = 'POSITIVE'").fetchall()
       return jsonify({'tokens': [{'value': b64encode(row[0]).decode('ascii'), 'type': row[1]} for row in all_tokens]})
   elif request.method == 'POST':
     try:
@@ -128,9 +112,8 @@ def tokens(request):
       process_report(report)
     except (BadInputException) as err:
       return ('Bad Request: ' + str(err), 400)
-    except (ForbiddenException):
-      return ('Forbidden', 403)
+    except (VerificationFailedException):
+      return ('Verification Failed', 403)
     return 'Success!'
   else:
     return ('Method Not Allowed', 405)
-
