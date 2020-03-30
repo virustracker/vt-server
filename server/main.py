@@ -39,13 +39,13 @@ def db_execute(conn, stmt, values):
 # Add to or update token table
 def store_tokens(token_values, report_result, report_type):
   # Disallow overwriting verified results with self-reported results.
-  update_condition = ' WHERE token.report_type <> "VERIFIED"' if report_type != 'VERIFIED' else ''
+  update_condition = " WHERE token.report_type <> 'VERIFIED'" if report_type != "VERIFIED" else ""
   
   stmt = sqlalchemy.text(
-    'INSERT INTO token (token_value, report_type, report_result) '
-    'VALUES (:token_value, :report_type, :report_result) '
-    'ON CONFLICT (token_value) DO UPDATE '
-    'SET report_type = :report_type, report_result = :report_result'
+    "INSERT INTO token (token_value, report_type, report_result) "
+    "VALUES (:token_value, :report_type, :report_result) "
+    "ON CONFLICT (token_value) DO UPDATE "
+    "SET report_type = :report_type, report_result = :report_result"
     + update_condition
   )
   
@@ -98,7 +98,7 @@ def process_report(report):
     if not verify_ahp(preimages, ahp):
       raise ForbiddenException()
     with db_connect() as conn:
-      rows = conn.execute(sqlalchemy.text('SELECT report_result FROM certificate WHERE attestation_hash_prefix = :ahp'), {'ahp': ahp}).fetchall()
+      rows = conn.execute(sqlalchemy.text("SELECT report_result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
       if not rows:
         raise ForbiddenException()
       report_result = rows[0][0]
