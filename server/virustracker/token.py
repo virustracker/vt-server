@@ -28,19 +28,14 @@ def store_tokens(token_values, report_result, report_type):
   
   stmt = sqlalchemy.text(
     "INSERT INTO token (token_value, report_type, report_result) "
-    "VALUES (:token_value, :report_type, :report_result) "
+    "VALUES (:value, :type, :result) "
     "ON CONFLICT (token_value) DO UPDATE "
-    "SET report_type = :report_type, report_result = :report_result"
+    "SET report_type = :type, report_result = :result"
     + update_condition
   )
   
   with db_connect() as conn:
-    new_row = {}
-    new_row['report_type'  ] = report_type
-    new_row['report_result'] = report_result
-    for token_value in token_values:
-      new_row['token_value'] = token_value
-      db_execute(conn, stmt, new_row)
+    db_execute(conn, stmt, *[{'type': report_type, 'result': report_result, 'value': value} for value in token_values])
 
 class BadInputException(Exception):
   pass
