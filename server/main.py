@@ -113,6 +113,8 @@ def verify_ahp(preimages, ahp):
   return hmac.compare_digest(ahp, m.digest()[:len(ahp)])
 
 def tokens(request):
+  if request.path != '/':
+    return ('Invalid Path', 404)
   if request.method == 'GET':
     with db_connect() as conn:
       all_tokens = conn.execute("SELECT token_value, report_type FROM token WHERE report_result = 'POSITIVE'").fetchall()
