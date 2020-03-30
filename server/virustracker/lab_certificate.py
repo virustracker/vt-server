@@ -46,7 +46,7 @@ def endpoint(request):
     return ('Invalid Path', 404)
   if request.method == 'GET':
     with db_connect() as conn:
-      rows = db_execute(conn, "SELECT result FROM certificate WHERE attestation_hash_prefix = :ahp", {'ahp': ahp}).fetchall()
+      rows = db_execute(conn, sqlalchemy.text("SELECT result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
       if not rows:
         return ('Not Found', 404)
       return jsonify({'result': rows[0][0]})
