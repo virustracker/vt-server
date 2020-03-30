@@ -11,6 +11,7 @@ from binascii import Error as BinasciiError
 
 PREIMAGE_BYTES = 32
 TOKEN_VALUE_BYTES = 32
+MAX_TOKENS_PER_REPORT = 12 * 24 * 30 # 30 days worth of tokens at one token per five minutes
 
 def compute_token_value(preimage):
   return hashlib.sha256(b"VIRUSTRACKER" + preimage).digest()
@@ -50,6 +51,8 @@ def process_report(report):
   report_type = report['type']
   if not isinstance(tokens, list):
     raise BadInputException("Tokens must be a list.")
+  if len(tokens) > MAX_TOKENS_PER_REPORT:
+    raise BadInputException("Too many tokens.")
   for token in tokens:
     if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
       raise BadInputException("Submitted tokens must have a preimage.")
