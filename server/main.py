@@ -98,7 +98,7 @@ def process_report(report):
     if not verify_ahp(preimages, ahp):
       raise ForbiddenException()
     with db_connect() as conn:
-      rows = conn.execute(sqlalchemy.text("SELECT report_result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
+      rows = conn.execute(sqlalchemy.text("SELECT result FROM certificate WHERE attestation_hash_prefix = :ahp"), {'ahp': ahp}).fetchall()
       if not rows:
         raise ForbiddenException()
       report_result = rows[0][0]
