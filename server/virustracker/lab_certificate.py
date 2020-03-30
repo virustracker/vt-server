@@ -1,12 +1,11 @@
 from . import common
 from .common import db_connect, db_execute
 
-import hashlib
 import hmac
 import math
 import sqlalchemy
 from flask import jsonify
-from base64 import b64encode, b64decode
+from base64 import b64decode
 from binascii import Error as BinasciiError
 
 def verify_attestation(attestation, ahp, result, lab_key):
@@ -23,7 +22,7 @@ class VerificationFailedException(Exception):
 
 def process_attestation(attestation, ahp, result, lab_id):
   with db_connect() as conn:
-    rows = db_execute(conn, "SELECT key FROM lab WHERE id = :id", {'id': lab_id}).fetchall()
+    rows = db_execute(conn, sqlalchemy.text("SELECT key FROM lab WHERE id = :id"), {'id': lab_id}).fetchall()
     if not rows:
       raise VerificationFailedException()
     lab_key = rows[0][0]
