@@ -6,7 +6,11 @@ from base64 import b64encode, b64decode
 from binascii import Error as BinasciiError
 import hashlib
 
-TOKEN_BYTES = 16
+PREIMAGE_BYTES = 32
+TOKEN_VALUE_BYTES = 32
+
+def compute_token_value(preimage):
+  return hashlib.sha256(b"VIRUSTRACKER" + preimage).digest()
 
 class BadInputException(Exception):
   pass
@@ -25,9 +29,6 @@ db = sqlalchemy.create_engine(
 def db_connect():
   return db.connect()
 
-def virustracker_hash(preimage):
-  return hashlib.sha256(b"VIRUSTRACKER"+preimage)
-
 def db_execute(conn, stmt, values):
   conn.execute(stmt, **values)
 
@@ -41,7 +42,7 @@ def store_result(tokens, result, report_type):
   with db_connect() as conn:
     for token in tokens:
       new_row = {}
-      new_row['token_value'] = virustracker_hash(b64decode(token['preimage'])).digest()
+      new_row['token_value'] = compute_token_value(b64decode(token['preimage']))
       new_row['report_type'] = report_type
       new_row['report_result'] = result
       
@@ -60,7 +61,7 @@ def process_report(report):
     if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
       raise BadInputException("POSTed tokens must have a preimage.")
     try:
-      if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
+      if len(token['preimage']) != math.ceil(PREIMAGE_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != PREIMAGE_BYTES:
         raise BadInputException("Could not parse token preimage.")
     except (BinasciiError, ValueError) as err:
       raise BadInputException("Invalid Base64.")
