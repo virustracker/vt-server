@@ -55,6 +55,7 @@ def store_result(tokens, result, report_type):
       db_execute(conn, stmt, new_row)
 
 def process_report(report):
+  # Validate input
   if not isinstance(report, dict) or not all(field in report for field in ('tokens', 'type', 'result')):
     raise BadInputException("Report must be a dict, and must contain 'tokens', 'type', and 'result'.")
   tokens = report['tokens']
@@ -65,8 +66,11 @@ def process_report(report):
   for token in tokens:
     if not isinstance(token, dict) or 'preimage' not in token or not isinstance(token['preimage'], str):
       raise BadInputException("POSTed tokens must have a preimage.")
-    if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
-      raise BadInputException("Could not parse token preimage.")
+    try:
+      if len(token['preimage']) != math.ceil(TOKEN_BYTES / 3) * 4 or len(b64decode(token['preimage'], validate=True)) != TOKEN_BYTES:
+        raise BadInputException("Could not parse token preimage.")
+    except (BinasciiError, ValueError) as err:
+      raise BadInputException("Invalid Base64.")
     if any(latlong in token and not isinstance(token[latlong], (float, int)) for latlong in ('lat', 'long')):
         raise BadInputException("Could not parse token location.")
   if not isinstance(report_type, str) or report_type not in ('SELF_REPORT', 'VERIFIED'):
@@ -82,15 +86,15 @@ def tokens(request):
       all_tokens = conn.execute("SELECT token_value, report_type FROM token WHERE report_result = 'POSITIVE'").fetchall()
       return jsonify({'tokens': [{'value': b64encode(row[0]).decode('ascii'), 'type': row[1]} for row in all_tokens]})
   elif request.method == 'POST':
-    # Validate input
     try:
       request_json = request.get_json()
       if not request_json or not isinstance(request_json, dict) or 'report' not in request_json:
         raise BadInputException("Request must contain JSON, and must have a report.")
       report = request_json['report']
-      process_report(report)
-    except (BadInputException, BinasciiError, ValueError) as err:
+    except (BadInputException) as err:
       return ('Bad Request: ' + str(err), 400)
+    
+    process_report(report)
     
     return 'Success!'
   else:
