@@ -13,8 +13,8 @@ def mock_execute(conn, stmt, *args, **kwargs):
 
 class TestProcessReports(unittest.TestCase):
 
-  @mock.patch('server.virustracker.common.db_execute', side_effect=mock_execute)
-  @mock.patch('server.virustracker.common.db_connect')
+  @mock.patch('server.virustracker.token.db_execute', side_effect=mock_execute)
+  @mock.patch('server.virustracker.token.db_connect')
   def test_process_report(self, _, __):
     token = json.loads("""{
      	 "type": "SELF_REPORT",
@@ -27,7 +27,7 @@ class TestProcessReports(unittest.TestCase):
     server.virustracker.token.process_report(token)
     preimage = "0000000000000000000000000000000000000000000="
     token_value = hashlib.sha256(b"VIRUSTRACKER"+b64decode(preimage)).digest()
-    self.assertEqual(token_value, DB[0]['args'][0]['token_value'])
+    self.assertEqual(token_value, DB[0]['args'][0]['value'])
 
 
   def test_process_report_preimage_formaterror(self):
